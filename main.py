@@ -15,7 +15,6 @@ from config import client, tree, DISCORD_TOKEN
  @tree.command sejam executados e os comandos sejam registrados.
 """
 import music_commands      # noqa: F401
-import ai_commands         # noqa: F401
 import general_commands    # noqa: F401
 
 
@@ -27,7 +26,7 @@ async def on_ready():
     await client.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
-            name="/play | /ask"
+            name="/play"
         )
     )
 

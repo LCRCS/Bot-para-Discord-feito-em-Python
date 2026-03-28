@@ -31,13 +31,14 @@ FFMPEG_OPTIONS = {
 
 # ── Classe principal ─────────────────────────────────────
 class MusicPlayer:
-    """Gerencia a fila e reprodução de áudio."""
+   # Gerencia a fila e reprodução de áudio.
 
     def __init__(self):
         self.queue: deque                             = deque()
         self.current: dict | None                     = None
         self.voice_client: discord.VoiceClient | None = None
-        self.loop: bool                               = False
+        self.loop_queue: bool                         = False
+        self.loop_track: bool                         = False
         self.text_channel: discord.TextChannel | None = None
         self.volume: float                            = 1.0  # padrão 100%     
         
@@ -48,7 +49,7 @@ music_players: dict[int, MusicPlayer] = {}
 
 
 def get_player(guild_id: int) -> MusicPlayer:
-    """Retorna (ou cria) o MusicPlayer da call."""
+   # Coloca o bot na call
     if guild_id not in music_players:
         music_players[guild_id] = MusicPlayer()
     return music_players[guild_id]
@@ -56,7 +57,7 @@ def get_player(guild_id: int) -> MusicPlayer:
 
 # ── Helpers ──────────────────────────────────────────────
 async def extract_info(url: str) -> dict | None:
-    """Extrai metadados de áudio via yt-dlp de forma assíncrona."""
+    # Extra os dados do URL atráves do yt-dlp
     loop = asyncio.get_event_loop()
     with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
@@ -79,14 +80,14 @@ async def extract_info(url: str) -> dict | None:
 
 
 def fmt_dur(seconds: int) -> str:
-    """Formata segundos em MM:SS ou HH:MM:SS."""
+    # Formata segundos em MM:SS ou HH:MM:SS.
     m, s = divmod(int(seconds), 60)
     h, m = divmod(m, 60)
     return f"{h:02}:{m:02}:{s:02}" if h else f"{m:02}:{s:02}"
 
 
 def now_playing_embed(track: dict, queue_len: int) -> discord.Embed:
-    """Mostra o 'Tocando agora' e o conteúdo tocado."""
+    # Mostra o conteúdo tocado no momento.
     embed = discord.Embed(
         title="▶ Tocando agora",
         description=f"**[{track['title']}]({track['webpage_url']})**",
@@ -102,12 +103,17 @@ def now_playing_embed(track: dict, queue_len: int) -> discord.Embed:
 
 
 async def play_next(guild_id: int):
-    """Toca o próximo item da fila (chamado automaticamente após cada faixa)."""
+    #Toca o próximo item da fila (chamado automaticamente após cada faixa)
     player  = get_player(guild_id)
     channel = player.text_channel
-
+    
+     # Loop track: recoloca a música atual no início da fila
     if player.loop and player.current:
         player.queue.appendleft(player.current)
+    
+    # Loop queue: recoloca a música atual no FINAL da fila
+     elif player.loop_queue and player.current:
+        player.queue.append(player.current)
 
     if not player.queue:
         player.current = None
@@ -123,8 +129,6 @@ async def play_next(guild_id: int):
         if error:
             print(f"[player] Erro: {error}")
         asyncio.run_coroutine_threadsafe(play_next(guild_id), client.loop)
-
-    player.voice_client.play(source, after=after_play)
 
     if channel:
         await channel.send(embed=now_playing_embed(player.current, len(player.queue)))
